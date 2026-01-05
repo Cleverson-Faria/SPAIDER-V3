@@ -3,7 +3,8 @@ import { prisma } from "../prisma";
 
 /**
  * Verifica se o usuário é super_admin
- * Verifica no campo is_super_admin da tabela profiles via SQL
+ * APENAS o campo is_super_admin da tabela profiles determina super admin
+ * NÃO confundir com role 'admin' que é admin de uma organização específica
  */
 export async function isSuperAdmin(userId: string): Promise<boolean> {
   try {
@@ -14,19 +15,8 @@ export async function isSuperAdmin(userId: string): Promise<boolean> {
       WHERE id = $1
     `, userId) as any[];
     
-    if (result && result.length > 0 && result[0].is_super_admin === true) {
-      return true;
-    }
-    
-    // Fallback: verificar na tabela user_roles (mantido para compatibilidade)
-    const role = await prisma.user_roles.findFirst({
-      where: { 
-        user_id: userId,
-        role: 'admin' // admin no user_roles também pode ser considerado super admin
-      }
-    });
-    
-    return !!role;
+    // APENAS is_super_admin === true determina super admin
+    return result && result.length > 0 && result[0].is_super_admin === true;
   } catch (error) {
     console.error('[isSuperAdmin] Erro ao verificar:', error);
     return false;
