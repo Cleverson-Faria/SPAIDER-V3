@@ -641,7 +641,7 @@ export function buildNewOrderPayload(
     CustomerPaymentTerms: original.CustomerPaymentTerms,
     CompleteDeliveryIsDefined: original.CompleteDeliveryIsDefined ?? true,
     SalesOrganization: original.SalesOrganization,
-    DistributionChannel: original.DistributionChannel,
+    DistributionChannel: null, // Sempre vazio na criação
     OrganizationDivision: original.OrganizationDivision,
     SalesGroup: original.SalesGroup || null,
     SalesOffice: original.SalesOffice || null,
@@ -653,7 +653,7 @@ export function buildNewOrderPayload(
     PurchaseOrderByCustomer: `REF_${originalOrderId}`,
     CustomerPurchaseOrderType: original.CustomerPurchaseOrderType || null,
     HeaderBillingBlockReason: original.HeaderBillingBlockReason || null,
-    DeliveryBlockReason: original.DeliveryBlockReason || null,
+    DeliveryBlockReason: null, // Sempre vazio na criação
     RequestedDeliveryDate: original.RequestedDeliveryDate || null,
     CustomerPurchaseOrderSuplmnt: original.CustomerPurchaseOrderSuplmnt || null,
     
