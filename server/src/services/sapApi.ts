@@ -641,7 +641,7 @@ export function buildNewOrderPayload(
     CustomerPaymentTerms: original.CustomerPaymentTerms,
     CompleteDeliveryIsDefined: original.CompleteDeliveryIsDefined ?? true,
     SalesOrganization: original.SalesOrganization,
-    DistributionChannel: null, // Sempre vazio na criação
+    DistributionChannel: original.DistributionChannel, // Obrigatório para área de vendas
     OrganizationDivision: original.OrganizationDivision,
     SalesGroup: original.SalesGroup || null,
     SalesOffice: original.SalesOffice || null,

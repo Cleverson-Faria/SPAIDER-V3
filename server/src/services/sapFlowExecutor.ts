@@ -75,6 +75,7 @@ export async function executeFullFlowInBackground(
   let delivery: any = null;
   let csrfToken: string | null = null;
   let cookiesString: string = '';
+  let newOrderPayload: any = null; // Definido fora do try para estar disponível no catch
 
   // Step 1 e 2: Buscar ordem original e criar nova ordem
   try {
@@ -87,7 +88,8 @@ export async function executeFullFlowInBackground(
     cookiesString = csrfResult.cookiesString;
     if (!csrfToken) throw new Error("Falha ao obter token CSRF");
 
-    const newOrderPayload = buildNewOrderPayload(original, referenceOrder.order_number, referenceOrder.warehouse_code);
+    // Construir payload (definido fora para estar disponível no catch)
+    newOrderPayload = buildNewOrderPayload(original, referenceOrder.order_number, referenceOrder.warehouse_code);
     const postHeaders = {
       Authorization: auth,
       "x-csrf-token": csrfToken,
@@ -132,7 +134,8 @@ export async function executeFullFlowInBackground(
 
   } catch (error: any) {
     console.error("❌ [FLOW] Erro na criação da ordem:", error.message);
-    await saveStepError(testExecutionId, 'order', error, `${baseUrl}/A_SalesOrder`);
+    // Agora newOrderPayload está disponível para ser salvo no erro
+    await saveStepError(testExecutionId, 'order', error, `${baseUrl}/A_SalesOrder`, newOrderPayload);
     return; // Parar fluxo se ordem falhar
   }
 
