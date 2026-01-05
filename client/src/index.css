@@ -1,0 +1,192 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 187 85% 43%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 214 32% 91%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 280 65% 60%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 187 85% 43%;
+
+    --radius: 0.75rem;
+    
+    --chat-bg: 0 0% 98%;
+    --chat-user: 222 47% 25%;
+    --chat-assistant: 0 0% 100%;
+    
+    --success: 142 71% 45%;
+    --warning: 38 92% 50%;
+    --info: 199 89% 48%;
+    
+    --gradient-primary: linear-gradient(135deg, hsl(187 85% 43%), hsl(199 89% 48%));
+    --gradient-accent: linear-gradient(135deg, hsl(280 65% 60%), hsl(280 65% 70%));
+    
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+
+    --card: 217 33% 17%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 187 85% 43%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 280 65% 60%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 187 85% 43%;
+    
+    --chat-bg: 222 47% 8%;
+    --chat-user: 217 33% 20%;
+    --chat-assistant: 217 33% 17%;
+    
+    --success: 142 71% 45%;
+    --warning: 38 92% 50%;
+    --info: 199 89% 48%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+  
+  /* Transições suaves para mudança de tema */
+  html {
+    @apply transition-colors duration-300;
+  }
+  
+  body,
+  div,
+  header,
+  footer,
+  main,
+  section,
+  article,
+  aside,
+  nav {
+    @apply transition-colors duration-300;
+  }
+  
+  /* Transições para elementos interativos */
+  button,
+  a,
+  input,
+  textarea,
+  select {
+    @apply transition-all duration-200;
+  }
+  
+  /* Transições para cards e containers */
+  [class*="card"],
+  [class*="popover"],
+  [class*="dropdown"],
+  [class*="dialog"],
+  [class*="sheet"] {
+    @apply transition-colors duration-300;
+  }
+  
+  /* Animação de stagger para listas */
+  .stagger-item {
+    animation: fade-in-up 0.4s ease-out forwards;
+    opacity: 0;
+  }
+  
+  .stagger-item:nth-child(1) { animation-delay: 0.05s; }
+  .stagger-item:nth-child(2) { animation-delay: 0.1s; }
+  .stagger-item:nth-child(3) { animation-delay: 0.15s; }
+  .stagger-item:nth-child(4) { animation-delay: 0.2s; }
+  .stagger-item:nth-child(5) { animation-delay: 0.25s; }
+  .stagger-item:nth-child(6) { animation-delay: 0.3s; }
+  .stagger-item:nth-child(7) { animation-delay: 0.35s; }
+  .stagger-item:nth-child(8) { animation-delay: 0.4s; }
+  .stagger-item:nth-child(9) { animation-delay: 0.45s; }
+  .stagger-item:nth-child(10) { animation-delay: 0.5s; }
+  .stagger-item:nth-child(n+11) { animation-delay: 0.5s; }
+  
+  @keyframes fade-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}

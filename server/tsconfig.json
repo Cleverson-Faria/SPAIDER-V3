@@ -1,0 +1,41 @@
+{
+  "compilerOptions": {
+    // File Layout
+    "rootDir": "./",
+    "outDir": "./dist",
+
+    // Environment Settings
+    "module": "commonjs",
+    "target": "ES2020",
+    "lib": ["ES2020"],
+    "types": ["node"],
+
+    // Module Resolution
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+
+    // Other Outputs
+    "sourceMap": true,
+    "declaration": true,
+    "declarationMap": true,
+
+    // Stricter Typechecking Options (practical settings)
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitThis": true,
+    "alwaysStrict": true,
+
+    // Other Options
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "isolatedModules": true
+  },
+  "include": ["src/**/*", "prisma.config.ts"],
+  "exclude": ["node_modules", "dist"]
+}

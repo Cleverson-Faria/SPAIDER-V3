@@ -1,0 +1,95 @@
+export const fieldTranslations: Record<string, string> = {
+  // Cabeçalho
+  'CustomerPaymentTerms': 'Condições de Pagamento',
+  'DistributionChannel': 'Canal de Distribuição',
+  'IncotermsClassification': 'Classificação Incoterms',
+  'IncotermsLocation1': 'Local Incoterms',
+  'OrganizationDivision': 'Divisão da Organização',
+  'SalesOrganization': 'Organização de Vendas',
+  'ShippingCondition': 'Condição de Expedição',
+  'SoldToParty': 'Cliente',
+  'SalesOrder': 'Ordem de Venda',
+  'SalesOrderType': 'Tipo de Ordem',
+  'PurchaseOrderByCustomer': 'Pedido do Cliente',
+  
+  // Itens
+  'RequestedQuantity': 'Quantidade Solicitada',
+  'RequestedQuantityUnit': 'Unidade de Medida',
+  'NetAmount': 'Valor Líquido',
+  'ShippingPoint': 'Local de Expedição',
+  'ProductionPlant': 'Centro de Produção',
+  'SalesOrderItemCategory': 'Categoria do Item',
+  'MaterialGroup': 'Grupo de Materiais',
+  'ProductTaxClassification1': 'Classificação Fiscal',
+  'ProfitCenter': 'Centro de Lucro',
+  'SalesOrderItem': 'Item da Ordem',
+  'Material': 'Material',
+  
+  // Impostos (já em português, mas mantendo consistência)
+  'ICMS': 'ICMS',
+  'PIS': 'PIS',
+  'COFINS': 'COFINS',
+  'ICMS_ST': 'ICMS ST',
+  'CBS': 'CBS',
+  'IBS': 'IBS',
+  
+  // NF-e (Nota Fiscal Eletrônica) - Cabeçalho
+  'BRNFNumber': 'Número da Nota',
+  'BRNFAccessKey': 'Chave de Acesso',
+  'BRNFIssueDate': 'Data de Emissão',
+  'BRNFStatus': 'Status da NF-e',
+  'BRNFTotalGrossAmount': 'Valor Bruto Total',
+  'BRNFTotalNetAmount': 'Valor Líquido Total',
+  'BRNFIssuer': 'Emissor',
+  'BRNFRecipient': 'Destinatário',
+  'BRNFItemQuantity': 'Quantidade de Itens',
+  'BRNFICMSTotalAmount': 'ICMS Total',
+  'BRNFPISTotalAmount': 'PIS Total',
+  'BRNFCOFINSTotalAmount': 'COFINS Total',
+  'BRNFTotalAmount': 'Valor Total',
+  'BusinessPlace': 'Local de Negócios',
+  'nfTotalAmount': 'Valor Total da NF',
+  'notaFiscal': 'Número da Nota Fiscal',
+  'nfeNumber': 'Número da NF-e',
+  'nfAuthenticationDate': 'Data de Autenticação',
+  'nfPartner': 'Parceiro',
+  'nfPartnerName1': 'Nome do Parceiro',
+  'nfPartnerCNPJ': 'CNPJ do Parceiro',
+  'nfPartnerCPF': 'CPF do Parceiro',
+  'nfeDocumentStatus': 'Status do Documento',
+  'brNfIsCanceled': 'NF-e Cancelada',
+  'businessPlace': 'Local de Negócios',
+  
+  // NF-e (Nota Fiscal Eletrônica) - Itens
+  'notaFiscalItem': 'Item da Nota Fiscal',
+  'material': 'Material',
+  'materialName': 'Nome do Material',
+  'quantityInBaseUnit': 'Quantidade',
+  'netPriceAmount': 'Preço Líquido',
+  'cfopCode': 'Código CFOP',
+  'purchaseOrder': 'Pedido de Compra',
+  'brNfSourceDocumentNumber': 'Número do Documento de Origem',
+  'brNfNetFreightAmount': 'Valor do Frete',
+  'brNfNetInsuranceAmount': 'Valor do Seguro',
+  'brNfNetOtherexpensesAmount': 'Outras Despesas',
+  'brPisStTaxAmount': 'Valor PIS ST',
+  'brCofinsStTaxAmount': 'Valor COFINS ST',
+  'taxsituation': 'Situação Tributária',
+  'cst': 'CST',
+  'cclasstrib': 'Classificação Tributária',
+  
+  // Códigos de Impostos SPAIDER
+  'CBS3': 'CBS',
+  'IB3S': 'IBS',
+  'ICM3': 'ICMS',
+  'ICON': 'ICMS Contribuinte',
+  'ICS3': 'ICMS ST',
+  'IPI3': 'IPI',
+  'IPSN': 'PIS',
+  'ZCBS': 'CBS (Z)',
+  'ZIBS': 'IBS (Z)'
+};
+
+export function translateField(fieldName: string): string {
+  return fieldTranslations[fieldName] || fieldName;
+}

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Fundo branco -->
+  <rect width="100" height="100" fill="#FFFFFF"/>
+  
+  <!-- Barra vertical preta (parte vertical do L) -->
+  <rect x="5" y="0" width="18" height="95" fill="#000000"/>
+  
+  <!-- Barra horizontal preta (parte horizontal do L) -->
+  <rect x="5" y="77" width="90" height="18" fill="#000000"/>
+  
+  <!-- Recorte branco interno do L -->
+  <rect x="23" y="60" width="55" height="17" fill="#FFFFFF"/>
+  <rect x="60" y="60" width="18" height="35" fill="#FFFFFF"/>
+  
+  <!-- Barra vertical roxa -->
+  <rect x="33" y="0" width="14" height="62" fill="#7C3AED"/>
+  
+  <!-- Quadrado roxo pequeno no canto inferior esquerdo -->
+  <rect x="8" y="80" width="12" height="12" fill="#7C3AED"/>
+</svg>
