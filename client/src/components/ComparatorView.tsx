@@ -942,13 +942,14 @@ export const ComparatorView = ({ runId, onBackToChat, mode = 'single-order' }: C
       if (data.localStorage?.key && data.localStorage?.value) {
         try {
           adaptiveStorage.setItem(data.localStorage.key, data.localStorage.value);
+          
+          // Parse e atualiza flowData apenas se localStorage.value existir
+          const newFlowData = JSON.parse(data.localStorage.value).flow_result;
+          setFlowData(newFlowData);
         } catch (storageError) {
-          console.warn('⚠️ Erro ao salvar no storage após retry:', storageError);
+          console.warn('⚠️ Erro ao processar dados após retry:', storageError);
         }
       }
-
-      const newFlowData = JSON.parse(data.localStorage.value).flow_result;
-      setFlowData(newFlowData);
 
       toast({
         title: data.ui?.toast?.title || "Fluxo Continuado",
