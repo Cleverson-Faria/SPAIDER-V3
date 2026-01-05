@@ -550,15 +550,29 @@ export function buildNewOrderPayload(
     logger.info(`No warehouse code provided, using original StorageLocation`);
   }
   
+  // Coletar condições de cabeçalho vindas dos itens (PrcgProcedureCounterForHeader === "1")
+  const headerConditionsFromItems: any[] = [];
+  
   // Build items with only manually changed pricing elements
   const items = original.to_Item?.results?.map((item: any, index: number) => {
     // Filter only manually changed pricing elements
     const allPricingElements = item.to_PricingElement?.results || [];
-    const pricingElements = allPricingElements.filter(
+    const manualConditions = allPricingElements.filter(
       (pe: any) => pe.ConditionIsManuallyChanged === true || pe.ConditionIsManuallyChanged === 'true'
     );
 
-    logger.info(`Item ${index + 1}: Filtered ${pricingElements.length} manually changed conditions from ${allPricingElements.length} total`);
+    // Separar condições: cabeçalho (PrcgProcedureCounterForHeader === "1") vs item
+    const headerLevelConditions = manualConditions.filter(
+      (pe: any) => pe.PrcgProcedureCounterForHeader === "1" || pe.PrcgProcedureCounterForHeader === 1
+    );
+    const itemLevelConditions = manualConditions.filter(
+      (pe: any) => pe.PrcgProcedureCounterForHeader !== "1" && pe.PrcgProcedureCounterForHeader !== 1
+    );
+
+    // Acumular condições de cabeçalho vindas dos itens
+    headerConditionsFromItems.push(...headerLevelConditions);
+
+    logger.info(`Item ${index + 1}: ${manualConditions.length} manual conditions (${itemLevelConditions.length} item-level, ${headerLevelConditions.length} header-level)`);
     
     // Log excluded automatic conditions
     const autoConditions = allPricingElements.filter(
@@ -568,7 +582,7 @@ export function buildNewOrderPayload(
       logger.info(`Item ${index + 1}: Excluded ${autoConditions.length} automatic conditions: ${autoConditions.map((c: any) => c.ConditionType).join(', ')}`);
     }
 
-    // Build item object with new model fields
+    // Build item object with new model fields - apenas condições de nível de item
     const itemPayload: any = {
       SalesOrderItemCategory: item.SalesOrderItemCategory,
       SalesOrderItem: item.SalesOrderItem,
@@ -583,7 +597,7 @@ export function buildNewOrderPayload(
       RequestedQuantity: item.RequestedQuantity,
       StorageLocation: warehouseCode || item.StorageLocation,
       to_PricingElement: {
-        results: pricingElements.map((pe: any) => ({
+        results: itemLevelConditions.map((pe: any) => ({
           ConditionCurrency: pe.ConditionCurrency,
           ConditionType: pe.ConditionType,
           ConditionRateValue: pe.ConditionRateValue
@@ -599,16 +613,24 @@ export function buildNewOrderPayload(
     return itemPayload;
   }) || [];
 
-  const totalPricingElements = items.reduce((sum: number, item: any) => 
+  const totalItemPricingElements = items.reduce((sum: number, item: any) => 
     sum + (item.to_PricingElement?.results?.length || 0), 0
   );
 
-  logger.info(`New order payload prepared with ${items.length} items and ${totalPricingElements} manually changed pricing elements`);
+  logger.info(`New order payload prepared with ${items.length} items and ${totalItemPricingElements} item-level pricing elements`);
 
-  // Filter header-level manually changed pricing elements
-  const headerPricingElements = (original.to_PricingElement?.results || []).filter(
+  // Filter header-level manually changed pricing elements from original header
+  const headerPricingElementsFromHeader = (original.to_PricingElement?.results || []).filter(
     (pe: any) => pe.ConditionIsManuallyChanged === true || pe.ConditionIsManuallyChanged === 'true'
   );
+
+  // Combinar: condições do cabeçalho original + condições dos itens com PrcgProcedureCounterForHeader === "1"
+  const allHeaderPricingElements = [...headerPricingElementsFromHeader, ...headerConditionsFromItems];
+  
+  if (headerConditionsFromItems.length > 0) {
+    logger.info(`Found ${headerConditionsFromItems.length} header-level conditions from items (PrcgProcedureCounterForHeader=1): ${headerConditionsFromItems.map((c: any) => c.ConditionType).join(', ')}`);
+  }
+  logger.info(`Total header-level pricing elements: ${allHeaderPricingElements.length} (${headerPricingElementsFromHeader.length} from header + ${headerConditionsFromItems.length} from items)`);
 
   // Build payload with new model structure
   const payload: any = {
@@ -659,10 +681,10 @@ export function buildNewOrderPayload(
     logger.info(`No supplier partners found, using SoldToParty from header only`);
   }
 
-  // Add header-level pricing elements if any manually changed
-  if (headerPricingElements.length > 0) {
+  // Add header-level pricing elements if any (from header + from items with PrcgProcedureCounterForHeader=1)
+  if (allHeaderPricingElements.length > 0) {
     payload.to_PricingElement = {
-      results: headerPricingElements.map((pe: any) => ({
+      results: allHeaderPricingElements.map((pe: any) => ({
         ConditionCurrency: pe.ConditionCurrency,
         ConditionType: pe.ConditionType,
         ConditionRateValue: pe.ConditionRateValue
