@@ -22,6 +22,41 @@ interface ReferenceOrder {
 }
 
 /**
+ * Helper para salvar erro de uma etapa específica
+ */
+async function saveStepError(
+  testExecutionId: string,
+  stepName: string,
+  error: any,
+  endpoint?: string,
+  payload?: any
+) {
+  const updateData: Record<string, any> = {
+    [`${stepName}_status`]: "failed",
+    global_status: "failed",
+    updated_at: new Date(),
+  };
+  
+  // Salvar dados do erro na etapa correspondente
+  if (endpoint || payload || error) {
+    updateData[`${stepName}_data`] = {
+      endpoint: endpoint || null,
+      method: 'POST',
+      request: payload || null,
+      error: {
+        message: error.message,
+        timestamp: new Date().toISOString()
+      }
+    };
+  }
+  
+  await prisma.test_flow_executions.update({
+    where: { id: testExecutionId },
+    data: updateData
+  });
+}
+
+/**
  * Executa o fluxo completo SAP em background
  */
 export async function executeFullFlowInBackground(
@@ -34,14 +69,22 @@ export async function executeFullFlowInBackground(
 ): Promise<void> {
   const auth = buildBasicAuth(creds.username, creds.password);
   const baseUrl = buildSapBaseUrl(creds.baseUrl);
+  const deliveryBaseUrl = baseUrl.replace('API_SALES_ORDER_SRV', 'API_OUTBOUND_DELIVERY_SRV');
 
+  let newOrder: any = null;
+  let delivery: any = null;
+  let csrfToken: string | null = null;
+  let cookiesString: string = '';
+
+  // Step 1 e 2: Buscar ordem original e criar nova ordem
   try {
-    // Step 1: Buscar ordem original
     console.log("📝 [FLOW] Step 1: Buscando ordem original");
     const original = await fetchSalesOrder(baseUrl, auth, referenceOrder.order_number);
 
-    // Step 2: Criar nova ordem
-    const { csrfToken, cookiesString } = await getCsrfToken(baseUrl, auth);
+    // Obter token CSRF
+    const csrfResult = await getCsrfToken(baseUrl, auth);
+    csrfToken = csrfResult.csrfToken;
+    cookiesString = csrfResult.cookiesString;
     if (!csrfToken) throw new Error("Falha ao obter token CSRF");
 
     const newOrderPayload = buildNewOrderPayload(original, referenceOrder.order_number, referenceOrder.warehouse_code);
@@ -53,7 +96,8 @@ export async function executeFullFlowInBackground(
       Cookie: cookiesString,
     };
 
-    const newOrder = await createSalesOrder(baseUrl, postHeaders, newOrderPayload);
+    console.log("📝 [FLOW] Step 2: Criando nova ordem");
+    newOrder = await createSalesOrder(baseUrl, postHeaders, newOrderPayload);
     console.log("✅ [FLOW] Ordem criada:", newOrder.SalesOrder);
 
     // Step 2.5: Buscar nova ordem completa e comparar
@@ -64,8 +108,6 @@ export async function executeFullFlowInBackground(
     const comparisonResult = compareOrders(original, newOrderComplete);
     console.log(`✅ [FLOW] Comparação concluída: ${comparisonResult.summary.totalDifferences} diferenças`);
 
-    // Atualizar registro com dados de comparação
-    // Salva endpoint, payload enviado (request) e resposta (response)
     await prisma.test_flow_executions.update({
       where: { id: testExecutionId },
       data: { 
@@ -73,10 +115,10 @@ export async function executeFullFlowInBackground(
         order_status: "completed",
         completed_steps: 1,
         order_data: {
-          endpoint: `${baseUrl}/A_SalesOrder`,  // Endpoint utilizado
+          endpoint: `${baseUrl}/A_SalesOrder`,
           method: 'POST',
-          request: newOrderPayload,  // Payload enviado no POST
-          response: newOrderComplete  // Resposta do GET após criação
+          request: newOrderPayload,
+          response: newOrderComplete
         },
         raw_comparison_data: comparisonResult as any,
         total_differences: comparisonResult.summary.totalDifferences,
@@ -88,15 +130,22 @@ export async function executeFullFlowInBackground(
     console.log("💾 [FLOW] Salvando comparação nas tabelas dedicadas...");
     await saveComparisonToTables(testExecutionId, comparisonResult);
 
-    // Step 3: Criar remessa
+  } catch (error: any) {
+    console.error("❌ [FLOW] Erro na criação da ordem:", error.message);
+    await saveStepError(testExecutionId, 'order', error, `${baseUrl}/A_SalesOrder`);
+    return; // Parar fluxo se ordem falhar
+  }
+
+  // Step 3: Criar remessa
+  try {
     console.log("📦 [FLOW] Step 3: Criando remessa");
-    const deliveryBaseUrl = baseUrl.replace('API_SALES_ORDER_SRV', 'API_OUTBOUND_DELIVERY_SRV');
     const deliveryPayload = {
       to_DeliveryDocumentItem: {
         results: [{ ReferenceSDDocument: newOrder.SalesOrder }],
       },
     };
-    const delivery = await createOutboundDelivery(baseUrl, auth, csrfToken, cookiesString, newOrder.SalesOrder);
+    
+    delivery = await createOutboundDelivery(baseUrl, auth, csrfToken!, cookiesString, newOrder.SalesOrder);
     
     await prisma.test_flow_executions.update({
       where: { id: testExecutionId },
@@ -112,11 +161,29 @@ export async function executeFullFlowInBackground(
         completed_steps: 2,
       }
     });
+    console.log("✅ [FLOW] Remessa criada:", delivery.DeliveryDocument);
+  } catch (error: any) {
+    console.error("❌ [FLOW] Erro ao criar remessa:", error.message);
+    const deliveryPayload = {
+      to_DeliveryDocumentItem: {
+        results: [{ ReferenceSDDocument: newOrder.SalesOrder }],
+      },
+    };
+    await saveStepError(
+      testExecutionId, 
+      'delivery', 
+      error, 
+      `${deliveryBaseUrl}/A_OutbDeliveryHeader`,
+      deliveryPayload
+    );
+    return; // Parar fluxo se remessa falhar
+  }
 
-    // Step 4: Picking
+  // Step 4: Picking
+  try {
     console.log("📋 [FLOW] Step 4: Executando picking");
     const deliveryWithItems = await fetchDeliveryWithItems(baseUrl, auth, delivery.DeliveryDocument);
-    const pickingResult = await pickAllItems(baseUrl, auth, csrfToken, cookiesString, delivery.DeliveryDocument, deliveryWithItems.headerETag || undefined);
+    await pickAllItems(baseUrl, auth, csrfToken!, cookiesString, delivery.DeliveryDocument, deliveryWithItems.headerETag || undefined);
     
     await prisma.test_flow_executions.update({
       where: { id: testExecutionId },
@@ -125,10 +192,22 @@ export async function executeFullFlowInBackground(
         completed_steps: 3,
       }
     });
+    console.log("✅ [FLOW] Picking concluído");
+  } catch (error: any) {
+    console.error("❌ [FLOW] Erro no picking:", error.message);
+    await saveStepError(
+      testExecutionId, 
+      'picking', 
+      error, 
+      `${deliveryBaseUrl};v=0002/PickAllItems?DeliveryDocument='${delivery.DeliveryDocument}'`
+    );
+    return; // Parar fluxo se picking falhar
+  }
 
-    // Step 5: PGI
+  // Step 5: PGI
+  try {
     console.log("📤 [FLOW] Step 5: Executando PGI");
-    const pgiResult = await executePostGoodsIssue(baseUrl, auth, csrfToken, cookiesString, delivery.DeliveryDocument);
+    await executePostGoodsIssue(baseUrl, auth, csrfToken!, cookiesString, delivery.DeliveryDocument);
     
     await prisma.test_flow_executions.update({
       where: { id: testExecutionId },
@@ -137,114 +216,126 @@ export async function executeFullFlowInBackground(
         completed_steps: 4,
       }
     });
+    console.log("✅ [FLOW] PGI concluído");
+  } catch (error: any) {
+    console.error("❌ [FLOW] Erro no PGI:", error.message);
+    await saveStepError(
+      testExecutionId, 
+      'pgi', 
+      error, 
+      `${deliveryBaseUrl};v=0002/PostGoodsIssue?DeliveryDocument='${delivery.DeliveryDocument}'`
+    );
+    return; // Parar fluxo se PGI falhar
+  }
 
-    // Step 6: Billing (se API disponível)
-    if (creds.hasApis?.billing) {
+  // Step 6: Billing (se API disponível)
+  if (creds.hasApis?.billing) {
+    try {
       console.log("💰 [FLOW] Step 6: Criando faturamento");
-      try {
-        const sapBaseUrlClean = baseUrl.split('/sap/opu/odata')[0];
-        const billingEndpoint = `${sapBaseUrlClean}/sap/bc/spaider/createbilldoc`;
-        const billingPayload = {
-          docReference: delivery.DeliveryDocument,
-          categoryDoc: 'J',
-        };
-        const billing = await createBillingDocument(baseUrl, auth, csrfToken, cookiesString, delivery.DeliveryDocument);
-        
+      const sapBaseUrlClean = baseUrl.split('/sap/opu/odata')[0];
+      const billingEndpoint = `${sapBaseUrlClean}/sap/bc/spaider/createbilldoc`;
+      const billingPayload = {
+        docReference: delivery.DeliveryDocument,
+        categoryDoc: 'J',
+      };
+      const billing = await createBillingDocument(baseUrl, auth, csrfToken!, cookiesString, delivery.DeliveryDocument);
+      
+      await prisma.test_flow_executions.update({
+        where: { id: testExecutionId },
+        data: { 
+          billing_id: billing.BillingDocument,
+          billing_status: "completed",
+          billing_data: {
+            endpoint: billingEndpoint,
+            method: 'POST',
+            request: billingPayload,
+            response: billing
+          },
+          completed_steps: 5,
+        }
+      });
+      console.log("✅ [FLOW] Faturamento criado:", billing.BillingDocument);
+
+      // Step 7: NFe (se API disponível)
+      if (creds.hasApis?.nfe && billing.BillingDocument) {
+        console.log("📄 [FLOW] Step 7: Consultando NF-e");
         await prisma.test_flow_executions.update({
           where: { id: testExecutionId },
-          data: { 
-            billing_id: billing.BillingDocument,
-            billing_status: "completed",
-            billing_data: {
-              endpoint: billingEndpoint,
-              method: 'POST',
-              request: billingPayload,
-              response: billing
-            },
-            completed_steps: 5,
-          }
+          data: { nfe_status: "processing" }
         });
 
-        // Step 7: NFe (se API disponível)
-        if (creds.hasApis?.nfe && billing.BillingDocument) {
-          console.log("📄 [FLOW] Step 7: Consultando NF-e");
+        // Aguardar e tentar buscar NF-e
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        
+        try {
+          const formattedBillingDoc = billing.BillingDocument.toString().padStart(10, '0');
+          const nfeEndpoint = `${sapBaseUrlClean}/sap/bc/spaider/NfeDocument/BR_NFSourceDocumentNumber/${formattedBillingDoc}`;
+          const nfe = await fetchFiscalNote(baseUrl, auth, billing.BillingDocument);
           await prisma.test_flow_executions.update({
             where: { id: testExecutionId },
-            data: { nfe_status: "processing" }
+            data: { 
+              nfe_number: nfe.NFeNumber || nfe.BRNFNumber,
+              nfe_status: "completed",
+              nfe_data: {
+                endpoint: nfeEndpoint,
+                method: 'GET',
+                request: null,
+                response: nfe
+              },
+              completed_steps: 6,
+              global_status: "completed",
+              updated_at: new Date()
+            }
           });
-
-          // Aguardar e tentar buscar NF-e
-          await new Promise(resolve => setTimeout(resolve, 3000));
-          
-          try {
-            // Formatar número do billing document (10 dígitos)
-            const formattedBillingDoc = billing.BillingDocument.toString().padStart(10, '0');
-            const nfeEndpoint = `${sapBaseUrlClean}/sap/bc/spaider/NfeDocument/BR_NFSourceDocumentNumber/${formattedBillingDoc}`;
-            const nfe = await fetchFiscalNote(baseUrl, auth, billing.BillingDocument);
-            await prisma.test_flow_executions.update({
-              where: { id: testExecutionId },
-              data: { 
-                nfe_number: nfe.NFeNumber || nfe.BRNFNumber,
-                nfe_status: "completed",
-                nfe_data: {
-                  endpoint: nfeEndpoint,
-                  method: 'GET',
-                  request: null,
-                  response: nfe
-                },
-                completed_steps: 6,
-                global_status: "completed",
-                updated_at: new Date()
-              }
-            });
-          } catch (nfeError) {
-            console.warn("⚠️ [FLOW] NF-e não disponível ainda");
-            await prisma.test_flow_executions.update({
-              where: { id: testExecutionId },
-              data: { 
-                nfe_status: "failed",
-                global_status: "partial",
-                updated_at: new Date()
-              }
-            });
-          }
+          console.log("✅ [FLOW] NF-e obtida:", nfe.NFeNumber || nfe.BRNFNumber);
+        } catch (nfeError: any) {
+          console.warn("⚠️ [FLOW] NF-e não disponível ainda:", nfeError.message);
+          await prisma.test_flow_executions.update({
+            where: { id: testExecutionId },
+            data: { 
+              nfe_status: "failed",
+              nfe_data: {
+                error: { message: nfeError.message, timestamp: new Date().toISOString() }
+              },
+              global_status: "partial",
+              updated_at: new Date()
+            }
+          });
         }
-      } catch (billingError: any) {
-        console.warn("⚠️ [FLOW] Erro no billing:", billingError.message);
+      } else {
+        // NFe não habilitada, marcar como skipped
         await prisma.test_flow_executions.update({
           where: { id: testExecutionId },
           data: { 
-            billing_status: "failed",
-            global_status: "partial",
+            nfe_status: "skipped",
+            completed_steps: 6,
+            global_status: "completed",
             updated_at: new Date()
           }
         });
       }
-    } else {
-      await prisma.test_flow_executions.update({
-        where: { id: testExecutionId },
-        data: { 
-          billing_status: "skipped",
-          nfe_status: "skipped",
-          completed_steps: 5,
-          global_status: "completed",
-          updated_at: new Date()
-        }
-      });
+    } catch (billingError: any) {
+      console.warn("⚠️ [FLOW] Erro no billing:", billingError.message);
+      const sapBaseUrlClean = baseUrl.split('/sap/opu/odata')[0];
+      const billingEndpoint = `${sapBaseUrlClean}/sap/bc/spaider/createbilldoc`;
+      const billingPayload = {
+        docReference: delivery.DeliveryDocument,
+        categoryDoc: 'J',
+      };
+      await saveStepError(testExecutionId, 'billing', billingError, billingEndpoint, billingPayload);
     }
-
-    console.log("🏁 [FLOW] Fluxo completo finalizado");
-
-  } catch (error: any) {
-    console.error("❌ [FLOW] Erro no fluxo:", error);
+  } else {
     await prisma.test_flow_executions.update({
       where: { id: testExecutionId },
       data: { 
-        order_status: error.message.includes("order") ? "failed" : undefined,
-        global_status: "failed",
+        billing_status: "skipped",
+        nfe_status: "skipped",
+        completed_steps: 5,
+        global_status: "completed",
         updated_at: new Date()
       }
     });
   }
-}
 
+  console.log("🏁 [FLOW] Fluxo completo finalizado");
+}
