@@ -23,6 +23,8 @@ interface ReferenceOrder {
 
 /**
  * Helper para salvar erro de uma etapa específica
+ * NOTA: Apenas order, delivery, billing e nfe têm colunas *_data no banco
+ * Para picking e pgi, salvamos o erro no campo 'errors' (JSON array)
  */
 async function saveStepError(
   testExecutionId: string,
@@ -31,23 +33,32 @@ async function saveStepError(
   endpoint?: string,
   payload?: any
 ) {
+  // Steps que têm coluna *_data no banco de dados
+  const stepsWithDataColumn = ['order', 'delivery', 'billing', 'nfe'];
+  
   const updateData: Record<string, any> = {
     [`${stepName}_status`]: "failed",
     global_status: "failed",
     updated_at: new Date(),
   };
   
-  // Salvar dados do erro na etapa correspondente
-  if (endpoint || payload || error) {
-    updateData[`${stepName}_data`] = {
-      endpoint: endpoint || null,
-      method: 'POST',
-      request: payload || null,
-      error: {
-        message: error.message,
-        timestamp: new Date().toISOString()
-      }
-    };
+  // Construir objeto de erro
+  const errorInfo = {
+    endpoint: endpoint || null,
+    method: 'POST',
+    request: payload || null,
+    error: {
+      message: error.message,
+      timestamp: new Date().toISOString()
+    }
+  };
+  
+  // Salvar dados do erro na coluna *_data apenas se existir
+  if (stepsWithDataColumn.includes(stepName)) {
+    updateData[`${stepName}_data`] = errorInfo;
+  } else {
+    // Para picking/pgi, salvar no campo 'errors' como array
+    updateData.errors = [{ step: stepName, ...errorInfo }];
   }
   
   await prisma.test_flow_executions.update({

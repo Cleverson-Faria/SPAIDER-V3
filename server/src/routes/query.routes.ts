@@ -10,14 +10,13 @@ const router = Router();
  * Usuários normais só podem ver dados da sua própria organização
  * Super admins podem ver dados de todas as organizações
  */
+/**
+ * Tabelas que TÊM coluna organization_id e requerem filtro automático
+ * NOTA: Tabelas de comparação (test_header_comparisons, test_item_comparisons, etc.)
+ * NÃO têm organization_id - são filtradas via relação com test_flow_executions
+ */
 const ORGANIZATION_FILTERED_TABLES = [
   'test_flow_executions',
-  'test_header_comparisons',
-  'test_item_comparisons',
-  'test_tax_comparisons',
-  'test_nfe_header_comparisons',
-  'test_nfe_item_comparisons',
-  'test_nfe_tax_comparisons',
   'nfe_documents',
   'reference_orders',
   'sap_request_logs',
