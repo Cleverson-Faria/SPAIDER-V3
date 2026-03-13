@@ -91,7 +91,8 @@ Se o usuário pedir para testar algo, explique que primeiro ele precisa configur
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'gpt-4.1',
+      // Usamos um modelo estável e suportado na rota /v1/chat/completions
+      model: 'gpt-4o',
       messages: allMessages,
       max_tokens: 1000,
       temperature: 1.0,

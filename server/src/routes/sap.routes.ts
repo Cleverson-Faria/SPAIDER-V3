@@ -526,7 +526,7 @@ router.post("/execute-test", authenticate, async (req: any, res) => {
         characteristic_level_3: true,
       }
     });
-    
+
     console.log(`📋 [DEBUG] Total de ordens de referência na organização: ${allOrgOrders.length}`);
     allOrgOrders.forEach((order, idx) => {
       console.log(`   ${idx + 1}. Ordem: ${order.order_number} | Domain: ${order.domain || 'null'} | Char1: ${order.characteristic_1_id} | Char2: ${order.characteristic_2_id || 'null'} | Char3: ${order.characteristic_3_id || 'null'}`);
@@ -535,9 +535,9 @@ router.post("/execute-test", authenticate, async (req: any, res) => {
     // ETAPA 1: Busca EXATA (domain + char1 + char2 + char3)
     console.log(`\n🔍 [REFERENCE] ETAPA 1: Busca exata`);
     const exactWhere: any = {
-      organization_id: profile.organization_id,
-      characteristic_1_id: char1.id,
-      is_active: true,
+          organization_id: profile.organization_id,
+          characteristic_1_id: char1.id,
+          is_active: true,
     };
 
     // Tratar domain - se o usuário tem domínio, buscar ordem com esse domínio OU sem domínio
@@ -568,12 +568,12 @@ router.post("/execute-test", authenticate, async (req: any, res) => {
 
     referenceOrder = await prisma.reference_orders.findFirst({
       where: exactWhere,
-      include: {
-        characteristic_level_1: true,
-        characteristic_level_2: true,
-        characteristic_level_3: true,
-      }
-    });
+        include: {
+          characteristic_level_1: true,
+          characteristic_level_2: true,
+          characteristic_level_3: true,
+        }
+      });
 
     if (referenceOrder) {
       console.log(`✅ [REFERENCE] ETAPA 1: Encontrou ordem ${referenceOrder.order_number}`);
@@ -623,7 +623,7 @@ router.post("/execute-test", authenticate, async (req: any, res) => {
         console.log(`⚠️ [REFERENCE] ETAPA 2: Múltiplos resultados - solicitando escolha do usuário`);
       } else {
         console.log(`❌ [REFERENCE] ETAPA 2: Nenhum resultado`);
-        
+
         // ETAPA 3: Relaxa char2 e char3 (domain + char1 apenas)
         console.log(`\n🔍 [REFERENCE] ETAPA 3: Relaxando char2 e char3`);
         const level3Where: any = {

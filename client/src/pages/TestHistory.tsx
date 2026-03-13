@@ -244,8 +244,8 @@ const TestHistory = () => {
         run_id: test.run_id,
         test_id: test.test_id,
         
-        // Tipo do teste
-        execution_type: test.test_type === 'sales_order' ? 'single-order' : 'full-flow',
+        // Tipo do teste (backend salva: "ordem_vendas" ou "fluxo_completo")
+        execution_type: test.test_type === 'ordem_vendas' ? 'single-order' : 'full-flow',
         sap_module: 'SD',
         document_type: test.test_type,
         

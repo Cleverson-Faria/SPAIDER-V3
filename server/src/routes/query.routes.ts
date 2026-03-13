@@ -23,9 +23,8 @@ const ORGANIZATION_FILTERED_TABLES = [
   'chat_threads',
   'allowed_email_domains',
   'sap_domain_credentials',
-  'characteristic_level_1',
-  'characteristic_level_2',
-  'characteristic_level_3',
+  // NOTA: characteristic_level_1/2/3 são dados GLOBAIS compartilhados entre organizações
+  // Todos podem visualizar, mas apenas super admin pode gerenciar (controlado na UI)
 ];
 
 /**

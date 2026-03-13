@@ -668,7 +668,7 @@ export function buildNewOrderPayload(
   const supplierPartners = (original.to_Partner?.results || [])
     .filter((partner: any) => partner.Supplier)
     .map((partner: any) => ({
-      PartnerFunction: partner.PartnerFunction,
+        PartnerFunction: partner.PartnerFunction,
       Supplier: partner.Supplier
     }));
 

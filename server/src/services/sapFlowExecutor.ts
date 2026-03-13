@@ -150,7 +150,7 @@ export async function executeFullFlowInBackground(
     return; // Parar fluxo se ordem falhar
   }
 
-  // Step 3: Criar remessa
+    // Step 3: Criar remessa
   try {
     console.log("📦 [FLOW] Step 3: Criando remessa");
     const deliveryPayload = {
@@ -193,7 +193,7 @@ export async function executeFullFlowInBackground(
     return; // Parar fluxo se remessa falhar
   }
 
-  // Step 4: Picking
+    // Step 4: Picking
   try {
     console.log("📋 [FLOW] Step 4: Executando picking");
     const deliveryWithItems = await fetchDeliveryWithItems(baseUrl, auth, delivery.DeliveryDocument);
@@ -218,7 +218,7 @@ export async function executeFullFlowInBackground(
     return; // Parar fluxo se picking falhar
   }
 
-  // Step 5: PGI
+    // Step 5: PGI
   try {
     console.log("📤 [FLOW] Step 5: Executando PGI");
     await executePostGoodsIssue(baseUrl, auth, csrfToken!, cookiesString, delivery.DeliveryDocument);
@@ -242,8 +242,8 @@ export async function executeFullFlowInBackground(
     return; // Parar fluxo se PGI falhar
   }
 
-  // Step 6: Billing (se API disponível)
-  if (creds.hasApis?.billing) {
+    // Step 6: Billing (se API disponível)
+    if (creds.hasApis?.billing) {
     try {
       console.log("💰 [FLOW] Step 6: Criando faturamento");
       const sapBaseUrlClean = baseUrl.split('/sap/opu/odata')[0];
@@ -253,69 +253,69 @@ export async function executeFullFlowInBackground(
         categoryDoc: 'J',
       };
       const billing = await createBillingDocument(baseUrl, auth, csrfToken!, cookiesString, delivery.DeliveryDocument);
-      
-      await prisma.test_flow_executions.update({
-        where: { id: testExecutionId },
-        data: { 
-          billing_id: billing.BillingDocument,
-          billing_status: "completed",
+        
+        await prisma.test_flow_executions.update({
+          where: { id: testExecutionId },
+          data: { 
+            billing_id: billing.BillingDocument,
+            billing_status: "completed",
           billing_data: {
             endpoint: billingEndpoint,
             method: 'POST',
             request: billingPayload,
             response: billing
           },
-          completed_steps: 5,
-        }
-      });
+            completed_steps: 5,
+          }
+        });
       console.log("✅ [FLOW] Faturamento criado:", billing.BillingDocument);
 
-      // Step 7: NFe (se API disponível)
-      if (creds.hasApis?.nfe && billing.BillingDocument) {
-        console.log("📄 [FLOW] Step 7: Consultando NF-e");
-        await prisma.test_flow_executions.update({
-          where: { id: testExecutionId },
-          data: { nfe_status: "processing" }
-        });
-
-        // Aguardar e tentar buscar NF-e
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        
-        try {
-          const formattedBillingDoc = billing.BillingDocument.toString().padStart(10, '0');
-          const nfeEndpoint = `${sapBaseUrlClean}/sap/bc/spaider/NfeDocument/BR_NFSourceDocumentNumber/${formattedBillingDoc}`;
-          const nfe = await fetchFiscalNote(baseUrl, auth, billing.BillingDocument);
+        // Step 7: NFe (se API disponível)
+        if (creds.hasApis?.nfe && billing.BillingDocument) {
+          console.log("📄 [FLOW] Step 7: Consultando NF-e");
           await prisma.test_flow_executions.update({
             where: { id: testExecutionId },
-            data: { 
-              nfe_number: nfe.NFeNumber || nfe.BRNFNumber,
-              nfe_status: "completed",
+            data: { nfe_status: "processing" }
+          });
+
+          // Aguardar e tentar buscar NF-e
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          
+          try {
+          const formattedBillingDoc = billing.BillingDocument.toString().padStart(10, '0');
+          const nfeEndpoint = `${sapBaseUrlClean}/sap/bc/spaider/NfeDocument/BR_NFSourceDocumentNumber/${formattedBillingDoc}`;
+            const nfe = await fetchFiscalNote(baseUrl, auth, billing.BillingDocument);
+            await prisma.test_flow_executions.update({
+              where: { id: testExecutionId },
+              data: { 
+                nfe_number: nfe.NFeNumber || nfe.BRNFNumber,
+                nfe_status: "completed",
               nfe_data: {
                 endpoint: nfeEndpoint,
                 method: 'GET',
                 request: null,
                 response: nfe
               },
-              completed_steps: 6,
-              global_status: "completed",
-              updated_at: new Date()
-            }
-          });
+                completed_steps: 6,
+                global_status: "completed",
+                updated_at: new Date()
+              }
+            });
           console.log("✅ [FLOW] NF-e obtida:", nfe.NFeNumber || nfe.BRNFNumber);
         } catch (nfeError: any) {
           console.warn("⚠️ [FLOW] NF-e não disponível ainda:", nfeError.message);
-          await prisma.test_flow_executions.update({
-            where: { id: testExecutionId },
-            data: { 
-              nfe_status: "failed",
+            await prisma.test_flow_executions.update({
+              where: { id: testExecutionId },
+              data: { 
+                nfe_status: "failed",
               nfe_data: {
                 error: { message: nfeError.message, timestamp: new Date().toISOString() }
               },
-              global_status: "partial",
-              updated_at: new Date()
-            }
-          });
-        }
+                global_status: "partial",
+                updated_at: new Date()
+              }
+            });
+          }
       } else {
         // NFe não habilitada, marcar como skipped
         await prisma.test_flow_executions.update({
@@ -337,19 +337,19 @@ export async function executeFullFlowInBackground(
         categoryDoc: 'J',
       };
       await saveStepError(testExecutionId, 'billing', billingError, billingEndpoint, billingPayload);
-    }
-  } else {
-    await prisma.test_flow_executions.update({
-      where: { id: testExecutionId },
-      data: { 
-        billing_status: "skipped",
-        nfe_status: "skipped",
-        completed_steps: 5,
-        global_status: "completed",
-        updated_at: new Date()
       }
-    });
-  }
+    } else {
+      await prisma.test_flow_executions.update({
+        where: { id: testExecutionId },
+        data: { 
+          billing_status: "skipped",
+          nfe_status: "skipped",
+          completed_steps: 5,
+          global_status: "completed",
+          updated_at: new Date()
+        }
+      });
+    }
 
-  console.log("🏁 [FLOW] Fluxo completo finalizado");
+    console.log("🏁 [FLOW] Fluxo completo finalizado");
 }
